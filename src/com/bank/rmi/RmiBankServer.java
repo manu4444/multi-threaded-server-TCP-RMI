@@ -11,7 +11,7 @@ import java.rmi.RemoteException;
 
 public interface RmiBankServer extends Remote {
 
-	void init(int portNumber)
+	void init()
 			throws RemoteException, AlreadyBoundException, FileNotFoundException, UnsupportedEncodingException;
 
 	Response sendRequest(Request request) throws RemoteException, InterruptedException;

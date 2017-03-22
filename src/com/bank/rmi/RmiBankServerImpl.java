@@ -8,14 +8,15 @@ import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.rmi.AlreadyBoundException;
+import java.rmi.Naming;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.List;
+import java.util.*;
+
 import com.bank.*;
 import com.bank.*;
 public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankServer, Runnable {
@@ -41,14 +42,47 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		return server.responseList.get(0);
 	}
 
-	public void init(int portNumber)
+	public void lookupPeer() {
+		for( Integer hostId : peerList.keySet()){
+
+			ServerDetail remoteHost = peerList.get(hostId);
+			String location = "//" + remoteHost.hostname + ":" + Registry.REGISTRY_PORT + "/RmiBankServer" + remoteHost.id;
+			System.out.println("Looking for peer:" + location);
+			while(true) {
+				try {
+					Thread.sleep(50);
+					RmiBankServer peerHandle = (RmiBankServer)Naming.lookup(location);
+					peerHandles.put(hostId, peerHandle);
+					System.out.println("Found peer " + location);
+					//wpoolHandles.put(host, peerHandle);
+					//L..oadInfo peerLoadInfo = new LoadInfo(0,host);
+					//peerLoadInfo.load = 0;
+					//loadInfoTable.put(host, peerLoadInfo);
+					break;
+				} catch(Exception e) {
+					System.out.println("Error locating peer " + location);
+				}
+			}
+		}
+	}
+	public void init()
 			throws RemoteException, AlreadyBoundException, FileNotFoundException, UnsupportedEncodingException {
 
+		//String location = "//" + myDetail.hostname + ":" + myDetail.port + "/RmiBankServer";
 		System.setSecurityManager(new RMISecurityManager());
 		RmiBankServerImpl bankServer = new RmiBankServerImpl();
-		LocateRegistry.createRegistry( Registry.REGISTRY_PORT );
-		Registry localRegistry = LocateRegistry.getRegistry(portNumber);
-		localRegistry.rebind("RmiBankServer", bankServer);
+		Registry localRegistry;
+		try {
+			LocateRegistry.createRegistry(Registry.REGISTRY_PORT);
+		} catch (ExportException e){
+			//registry already running and do nothing
+		}
+		localRegistry = LocateRegistry.getRegistry(Registry.REGISTRY_PORT);
+		localRegistry.rebind("RmiBankServer" + myDetail.id, bankServer);
+
+		//Create 10 accounts
+
+		lookupPeer();
 	}
 
 	@Override
@@ -126,9 +160,64 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		return (int) System.currentTimeMillis();
 	}
 
+
+	List<ServerDetail> serverDetails;
+	Map<Integer, ServerDetail> peerList;
+	//Map<Integer, ServerDetail> idToServer;
+	ServerDetail myDetail;
+	Map<Integer, RmiBankServer> peerHandles;
+
+
+
 	public static void main(String args[])
 			throws RemoteException, AlreadyBoundException, FileNotFoundException, UnsupportedEncodingException {
+
+
+
+
+
+		//args[0] = "0";
+		//args[1] = "configFile";
+
 		RmiBankServerImpl server = new RmiBankServerImpl();
-		server.init(Integer.parseInt(args[0]));
+		server.configInitialization(args[0], "configFile");
+		server.init();
+	}
+
+
+
+
+	public void configInitialization(String serverId, String configFile){
+		int myServerId = Integer.parseInt(serverId);
+
+		serverDetails = new ArrayList<ServerDetail>();
+		peerList = new HashMap<Integer, ServerDetail>();
+		peerHandles = new HashMap<Integer, RmiBankServer>();
+
+		serverDetails.add(new ServerDetail(1,"localhost",4000));
+		serverDetails.add(new ServerDetail(2,"localhost",4001));
+		serverDetails.add(new ServerDetail(3,"localhost",4002));
+
+		for( ServerDetail sd : serverDetails){
+			if( sd.id == myServerId ){
+				myDetail = sd;
+			} else {
+				peerList.put(sd.id, sd);
+			}
+			//idToServer.put(sd.id, sd);
+		}
+		//myDetail = idToServer.get();
+	}
+
+	class ServerDetail{
+		String hostname;
+		int port;
+		int id;
+
+		ServerDetail(int id, String hostname, int port){
+			this.hostname = hostname;
+			this.port = port;
+			this.id = id;
+		}
 	}
 }
