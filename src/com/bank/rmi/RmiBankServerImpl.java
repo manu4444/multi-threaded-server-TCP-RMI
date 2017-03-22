@@ -24,6 +24,11 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 	//Newly Added variables
 
 	int accountId = 1;
+	List<ServerDetail> serverDetails;
+	Map<Integer, ServerDetail> peerList;
+	//Map<Integer, ServerDetail> idToServer;
+	ServerDetail myDetail;
+	Map<Integer, RmiBankServer> peerHandles;
 
 
 	private static Hashtable<Integer, Account> accounts = new Hashtable<Integer, Account>();
@@ -173,11 +178,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 	}
 
 
-	List<ServerDetail> serverDetails;
-	Map<Integer, ServerDetail> peerList;
-	//Map<Integer, ServerDetail> idToServer;
-	ServerDetail myDetail;
-	Map<Integer, RmiBankServer> peerHandles;
+
 
 
 
@@ -207,8 +208,8 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		peerHandles = new HashMap<Integer, RmiBankServer>();
 
 		serverDetails.add(new ServerDetail(1,"localhost",4000));
-		serverDetails.add(new ServerDetail(2,"localhost",4001));
-		serverDetails.add(new ServerDetail(3,"localhost",4002));
+		//serverDetails.add(new ServerDetail(2,"localhost",4001));
+		//serverDetails.add(new ServerDetail(3,"localhost",4002));
 
 		for( ServerDetail sd : serverDetails){
 			if( sd.id == myServerId ){
