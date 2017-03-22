@@ -20,6 +20,12 @@ import java.util.*;
 import com.bank.*;
 import com.bank.*;
 public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankServer, Runnable {
+
+	//Newly Added variables
+
+	int accountId = 1;
+
+
 	private static Hashtable<Integer, Account> accounts = new Hashtable<Integer, Account>();
 	private Request clientRequest;
 	private static PrintWriter writer;
@@ -81,7 +87,12 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		localRegistry.rebind("RmiBankServer" + myDetail.id, bankServer);
 
 		//Create 10 accounts
+		for( int i=0; i<10; i++ ){
+			CreateAccountResponse res = (CreateAccountResponse)createAccount ( new CreateAccountRequest("CreateAcccount") );
+			depositAmount( new DepositRequest("Deposit", res.getUid(), 1000));
+		}
 
+		System.out.println("Successfully deposited 1000 to 10 account");
 		lookupPeer();
 	}
 
@@ -155,9 +166,10 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 	}
 
 	public int generateAccountId() {
-		while (accounts.containsKey((int) System.currentTimeMillis())) {
-		}
-		return (int) System.currentTimeMillis();
+		return accountId++;
+//		while (accounts.containsKey((int) System.currentTimeMillis())) {
+//		}
+//		return (int) System.currentTimeMillis();
 	}
 
 
