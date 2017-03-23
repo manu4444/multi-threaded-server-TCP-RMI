@@ -23,7 +23,8 @@ public class RmiBankClient extends Thread {
 	private static int portNumber;
 	private static Hashtable<Integer, Integer> accountWithBalance = new Hashtable<Integer, Integer>();
 	private static List<Integer> accountIds = new ArrayList<Integer>(Arrays.asList(1,2,3,4,5,6,7,8,9,10));
-	private static int threadCount, iterationCount;
+	private static int threadCount=3;
+	private static int  iterationCount = 20;
 	private static RmiBankServer dateServer;
 	private static PrintWriter writer;
 
@@ -49,12 +50,12 @@ public class RmiBankClient extends Thread {
 		serverHandles = new HashMap<Integer, RmiBankServer>();
 
 		serverDetails.put(1, new ServerDetail(1,"localhost",4000));
-		//serverDetails.put(2, new ServerDetail(2,"localhost",4001));
+		serverDetails.put(2, new ServerDetail(2,"localhost",4001));
 		//serverDetails.put(3, new ServerDetail(3,"localhost",4002));
 
 		lookupServer();
 
-		int threadCount = 24;
+		//int threadCount = 2;
 		//Start 24 thread processes
 
 		for (int i = 0; i < threadCount; i++) {
@@ -78,8 +79,6 @@ public class RmiBankClient extends Thread {
 			this.id = id;
 		}
 	}
-
-
 
 
 	public void lookupServer() {
@@ -139,7 +138,7 @@ public class RmiBankClient extends Thread {
 
 	public void run() {
 
-		int iterationCount = 100;
+		//int iterationCount = 5;
 		for (int i = 0; i < iterationCount; i++) {
 
 			//Selecting random server
@@ -172,13 +171,13 @@ public class RmiBankClient extends Thread {
 
 	private TransferResponse transferMoney(int sourceAccount, int destinationAccount, int amount, int serverId)
 			throws RemoteException, InterruptedException {
-		TransferRequest request = new TransferRequest("Transfer", sourceAccount, destinationAccount, amount);
+		TransferRequest request = new TransferRequest("Transfer", sourceAccount, destinationAccount, amount, "Client");
 		TransferResponse response = (TransferResponse) serverHandles.get(serverId).sendRequest(request);
 		return response;
 	}
 
 	private DepositResponse depositAmount(Integer accountId, int amount) throws RemoteException, InterruptedException {
-		DepositRequest request = new DepositRequest("Deposit", accountId, amount);
+		DepositRequest request = new DepositRequest("Deposit", accountId, amount, "Client");
 		DepositResponse response = (DepositResponse) dateServer.sendRequest(request);
 		return response;
 	}
@@ -213,13 +212,13 @@ public class RmiBankClient extends Thread {
 	}
 
 	private BalanceResponse checkBalance(Integer accountId) throws RemoteException, InterruptedException {
-		GetBalanceRequest request = new GetBalanceRequest("Balance", accountId);
+		GetBalanceRequest request = new GetBalanceRequest("Balance", accountId, "Client");
 		BalanceResponse response = (BalanceResponse) dateServer.sendRequest(request);
 		return response;
 	}
 
 	private CreateAccountResponse createAccount() throws RemoteException, InterruptedException {
-		CreateAccountRequest request = new CreateAccountRequest("CreateAcccount");
+		CreateAccountRequest request = new CreateAccountRequest("CreateAcccount", "Client");
 		CreateAccountResponse response = (CreateAccountResponse) dateServer.sendRequest(request);
 		return response;
 	}

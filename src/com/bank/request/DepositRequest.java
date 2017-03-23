@@ -10,6 +10,12 @@ public class DepositRequest extends Request implements Serializable {
 		this.requestName = requestName;
 	}
 
+	@Override
+	protected void setRequestOrigin(String requestOrigin) {
+		this.requestOrigin = requestOrigin;
+	}
+
+
 	public int getUid() {
 		return uid;
 	}
@@ -18,10 +24,11 @@ public class DepositRequest extends Request implements Serializable {
 		return amount;
 	}
 
-	public DepositRequest(String requestName, int uid, int amount) {
+	public DepositRequest(String requestName, int uid, int amount, String requestOrigin) {
 		this.setRequestName(requestName);
 		this.amount = amount;
 		this.uid = uid;
+		this.requestOrigin = requestOrigin;
 	}
 
 	@Override

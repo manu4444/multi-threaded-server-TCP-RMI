@@ -139,7 +139,7 @@ public class BankClient extends Thread {
 		TransferResponse response = null;
 		OutputStream rawOut = socket.getOutputStream();
 		ObjectOutputStream sender = new ObjectOutputStream(rawOut);
-		TransferRequest request = new TransferRequest("Transfer", sourceAccount, destinationAccount, amount);
+		TransferRequest request = new TransferRequest("Transfer", sourceAccount, destinationAccount, amount, "Client");
 		sender.writeObject(request);
 		sender.flush();
 		socket.shutdownOutput();
@@ -158,7 +158,7 @@ public class BankClient extends Thread {
 		CreateAccountResponse response = null;
 		OutputStream rawOut = socket.getOutputStream();
 		ObjectOutputStream sender = new ObjectOutputStream(rawOut);
-		CreateAccountRequest request = new CreateAccountRequest("CreateAcccount");
+		CreateAccountRequest request = new CreateAccountRequest("CreateAcccount", "Client");
 		sender.writeObject(request);
 		sender.flush();
 		socket.shutdownOutput();
@@ -177,7 +177,7 @@ public class BankClient extends Thread {
 		DepositResponse response = null;
 		OutputStream rawOut = socket.getOutputStream();
 		ObjectOutputStream sender = new ObjectOutputStream(rawOut);
-		DepositRequest request = new DepositRequest("Deposit", accountId, amount);
+		DepositRequest request = new DepositRequest("Deposit", accountId, amount, "Client");
 		sender.writeObject(request);
 		sender.flush();
 		socket.shutdownOutput();
@@ -196,7 +196,7 @@ public class BankClient extends Thread {
 		BalanceResponse response = null;
 		OutputStream rawOut = socket.getOutputStream();
 		ObjectOutputStream sender = new ObjectOutputStream(rawOut);
-		GetBalanceRequest request = new GetBalanceRequest("Balance", accountId);
+		GetBalanceRequest request = new GetBalanceRequest("Balance", accountId, "Client");
 		sender.writeObject(request);
 		sender.flush();
 		socket.shutdownOutput();

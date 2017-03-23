@@ -7,9 +7,16 @@ public class CreateAccountRequest extends Request implements Serializable{
 	protected void setRequestName(String requestName) {
 		this.requestName = requestName;
 	}
-	public CreateAccountRequest(String requestName)
+
+	@Override
+	protected void setRequestOrigin(String requestOrigin) {
+		this.requestOrigin = requestOrigin;
+	}
+
+	public CreateAccountRequest(String requestName, String requestOrigin)
 	{
 		this.setRequestName(requestName);
+		this.setRequestOrigin(requestOrigin);
 	}
 	@Override
 	public String toString() {

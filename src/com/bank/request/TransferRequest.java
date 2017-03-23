@@ -10,6 +10,12 @@ public class TransferRequest extends Request implements Serializable {
 		this.requestName = requestName;
 	}
 
+	@Override
+	public void setRequestOrigin(String requestOrigin) {
+		this.requestOrigin = requestOrigin;
+	}
+
+
 	public int getSourceUid() {
 		return sourceUid;
 	}
@@ -22,11 +28,12 @@ public class TransferRequest extends Request implements Serializable {
 		return amount;
 	}
 
-	public TransferRequest(String requestName, int sourceUid, int destinationUid, int amount) {
+	public TransferRequest(String requestName, int sourceUid, int destinationUid, int amount, String requestOrigin) {
 		this.setRequestName(requestName);
 		this.sourceUid = sourceUid;
 		this.destinationUid = destinationUid;
 		this.amount = amount;
+		this.requestOrigin = requestOrigin;
 	}
 
 	@Override
