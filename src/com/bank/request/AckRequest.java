@@ -19,7 +19,7 @@ public class AckRequest extends Request implements Serializable{
     }
     @Override
     public String toString() {
-        return this.requestName;
+        return this.requestName+ " Lamport Clock :" + this.lamportClock.toString();
 
     }
 }

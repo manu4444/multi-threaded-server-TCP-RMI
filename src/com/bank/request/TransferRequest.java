@@ -38,7 +38,7 @@ public class TransferRequest extends Request implements Serializable {
 
 	@Override
 	public String toString() {
-		return this.requestName + ":{" + this.sourceUid + "," + this.destinationUid + "," + this.amount + "}";
+		return this.requestName + ":{" + this.sourceUid + "," + this.destinationUid + "," + this.amount + "}" + " Lamport Clock :" + this.lamportClock.toString();
 
 	}
 }

@@ -25,7 +25,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 
 
 	//Newly Added variables
-	public static int timestamp = 0;
+	public static Integer timestamp = 0;
 	public static int accountId = 1;
 	public static List<ServerDetail> serverDetails;
 	public static Map<Integer, ServerDetail> peerList;
@@ -36,7 +36,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 	public static Map<Integer, PriorityBlockingQueue<Request>> pendingRequestQueue = new HashMap<Integer, PriorityBlockingQueue<Request>>();
 	private static Hashtable<Integer, Account> accounts = new Hashtable<Integer, Account>();
 	private Request clientRequest;
-	private static PrintWriter writer;
+	private static PrintWriter writer,writerForAllReq;
 	private List<Response> responseList = null;;
 
 	public synchronized void  addToExecutionQueue(Request req){
@@ -44,6 +44,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 
 		try {
 			reqQueue.add(req);
+			writerForAllReq.println(req.toString());
 		}catch (Exception e){
 			e.printStackTrace();
 		}
@@ -58,7 +59,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 			PriorityBlockingQueue<Request> tempReq = new PriorityBlockingQueue<Request>();
 			while( true ){
 				try {
-					Thread.sleep(200);
+					Thread.sleep(10);
 					boolean sizeFull = true;
 					tempReq.clear();
 					//checking size of each
@@ -105,6 +106,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 
 	public RmiBankServerImpl(String serverId) throws IOException {
 		writer = new PrintWriter(new FileWriter("severLogfile"+Integer.parseInt(serverId)),true);
+		writerForAllReq = new PrintWriter(new FileWriter("severLogfile"+Integer.parseInt(serverId)+"AllReq"),true);
 	}
 
 	public Response sendRequest(Request request) throws RemoteException, InterruptedException {
@@ -173,9 +175,12 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 
 	public void processTransferRequest(TransferRequest transferRequest) throws RemoteException, InterruptedException {
 
-		timestamp++; //Increment timestamp
+
 		if( transferRequest.getRequestOrigin().equals("Client")) { //Send Request to all the server
 
+			synchronized (timestamp) { //Increment timestamp)
+				timestamp++;
+			}
 			transferRequest.setRequestOrigin("Server");
 			transferRequest.setLamportClock(new LamportClock(timestamp, myDetail.id));
 				for (int serverId : peerHandles.keySet()) {
@@ -184,13 +189,20 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		} else if( transferRequest.getRequestOrigin().equals("Server")) { //Send Ack to all the server
 
 			AckRequest ackReq = new AckRequest("Ack", "Server");
+			synchronized (timestamp){
+				timestamp = Math.max(timestamp, transferRequest.getLamportClock().timestamp);
+				timestamp++;
+			}
 			ackReq.setLamportClock(new LamportClock(timestamp, myDetail.id));
+			addToExecutionQueue(ackReq); // Also add acknowledgement to your queue -- very important
 				for (int serverId : peerHandles.keySet()) {
 					peerHandles.get(serverId).sendRequest(ackReq);
 				}
 		}
 		addToExecutionQueue(transferRequest);
 	}
+
+
 
 	@Override
 	public void run() {
@@ -242,7 +254,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		if (accounts.containsKey(clientRequest.getUid())) {
 			response = new BalanceResponse(accounts.get(clientRequest.getUid()).balance);
 		}
-		log(clientRequest, response);
+		//log(clientRequest, response);
 		return response;
 	}
 
@@ -274,7 +286,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 			response = new DepositResponse("OK");
 		} else
 			response = new DepositResponse("FAILED");
-		log(clientRequest, response);
+		//log(clientRequest, response);
 		return response;
 	}
 
@@ -282,7 +294,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		int accountNumber = generateAccountId();
 		accounts.put(accountNumber, new Account(accountNumber));
 		CreateAccountResponse response = new CreateAccountResponse(accountNumber);
-		log(clientRequest, response);
+		//log(clientRequest, response);
 		return response;
 	}
 

@@ -23,7 +23,7 @@ public class RmiBankClient extends Thread {
 	private static int portNumber;
 	private static Hashtable<Integer, Integer> accountWithBalance = new Hashtable<Integer, Integer>();
 	private static List<Integer> accountIds = new ArrayList<Integer>(Arrays.asList(1,2,3,4,5,6,7,8,9,10));
-	private static int threadCount=3;
+	private static int threadCount=5;
 	private static int  iterationCount = 20;
 	private static RmiBankServer dateServer;
 	private static PrintWriter writer;

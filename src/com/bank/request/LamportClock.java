@@ -19,7 +19,7 @@ public class LamportClock implements Serializable{
     }
 
     public  String toString() {
-        return Integer.toString(timestamp)+Integer.toString(serverId);
+        return Integer.toString(timestamp)+" "+Integer.toString(serverId);
     }
 
 
