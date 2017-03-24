@@ -1,12 +1,20 @@
 package com.bank.request;
 
+import com.bank.response.Response;
+import com.bank.response.TransferResponse;
+
 import java.io.Serializable;
 import java.util.Comparator;
+import java.util.concurrent.locks.Lock;
 
 public abstract class Request implements Serializable, Comparable<Request>{
 	protected String requestName;
 	protected String requestOrigin;
 	protected LamportClock lamportClock = new LamportClock(-1,-1);
+	public Response response;
+	public Lock lock;
+	public boolean isLock = true;
+	public int serverId;
 
 	protected abstract void setRequestName(String requestName);
 	protected abstract void setRequestOrigin(String requestOrigin);

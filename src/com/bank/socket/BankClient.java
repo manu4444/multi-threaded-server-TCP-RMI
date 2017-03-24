@@ -139,7 +139,7 @@ public class BankClient extends Thread {
 		TransferResponse response = null;
 		OutputStream rawOut = socket.getOutputStream();
 		ObjectOutputStream sender = new ObjectOutputStream(rawOut);
-		TransferRequest request = new TransferRequest("Transfer", sourceAccount, destinationAccount, amount, "Client");
+		TransferRequest request = new TransferRequest("Transfer", sourceAccount, destinationAccount, amount, "Client",0);
 		sender.writeObject(request);
 		sender.flush();
 		socket.shutdownOutput();

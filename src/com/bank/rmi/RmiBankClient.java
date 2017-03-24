@@ -1,15 +1,12 @@
 package com.bank.rmi;
 
-import com.bank.request.CreateAccountRequest;
-import com.bank.request.DepositRequest;
-import com.bank.request.GetBalanceRequest;
-import com.bank.request.TransferRequest;
+import com.bank.request.*;
 import com.bank.response.BalanceResponse;
 import com.bank.response.CreateAccountResponse;
 import com.bank.response.DepositResponse;
 import com.bank.response.TransferResponse;
 
-import java.io.PrintWriter;
+import java.io.*;
 import java.rmi.Naming;
 import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
@@ -27,7 +24,11 @@ public class RmiBankClient extends Thread {
 	private static int  iterationCount = 20;
 	private static RmiBankServer dateServer;
 	private static PrintWriter writer;
+	public int clientId;
 
+	public RmiBankClient(int clientId){
+		this.clientId = clientId;
+	}
 	public static void setThreadCount(int threadCount) {
 		RmiBankClient.threadCount = threadCount;
 	}
@@ -43,14 +44,27 @@ public class RmiBankClient extends Thread {
 	public static Map<Integer, RmiBankServer> serverHandles;
 
 
-	public void configInitialization(String configFile) throws InterruptedException {
+	public void configInitialization(String configFile) throws InterruptedException, IOException {
 		//int myServerId = Integer.parseInt(serverId);
 
 		serverDetails = new HashMap<Integer, ServerDetail>();
 		serverHandles = new HashMap<Integer, RmiBankServer>();
 
-		serverDetails.put(1, new ServerDetail(1,"localhost",4000));
-		serverDetails.put(2, new ServerDetail(2,"localhost",4001));
+		FileInputStream fis = new FileInputStream(configFile);
+		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
+		String line = null;
+		while ((line = br.readLine()) != null) {
+			System.out.println(line);
+			String[] splited = line.split("\\s+");
+			if( splited[0].charAt(0) == '#' ) continue;
+			serverDetails.put(Integer.parseInt(splited[1]),new ServerDetail(Integer.parseInt(splited[1]),splited[0],Integer.parseInt(splited[2])));
+		}
+		br.close();
+
+
+
+		//serverDetails.put(1, new ServerDetail(1,"localhost",4000));
+		//serverDetails.put(2, new ServerDetail(2,"localhost",4001));
 		//serverDetails.put(3, new ServerDetail(3,"localhost",4002));
 
 		lookupServer();
@@ -58,13 +72,15 @@ public class RmiBankClient extends Thread {
 		//int threadCount = 2;
 		//Start 24 thread processes
 
-		for (int i = 0; i < threadCount; i++) {
-			RmiBankClient client = new RmiBankClient();
+		for (int i = 1; i <= threadCount; i++) {
+			RmiBankClient client = new RmiBankClient(i);
 			client.start();
 			client.join();
 		}
 
+		TransferResponse response = (TransferResponse) serverHandles.get(0).sendRequest(new HaltRequest("Halt", "Client", 0));
 
+		System.out.println("Everything done");
 		//myDetail = idToServer.get();
 	}
 
@@ -111,7 +127,8 @@ public class RmiBankClient extends Thread {
 	public static void main(String args[]) throws Exception {
 		//host = args[0];
 		writer = new PrintWriter("clientLogfile");
-		RmiBankClient client = new RmiBankClient();
+		RmiBankClient client = new RmiBankClient(0);
+		setThreadCount(Integer.parseInt(args[0]));
 		//portNumber = Integer.parseInt(args[1]);
 		//RmiBankClient.setThreadCount(Integer.parseInt(args[2]));
 		//RmiBankClient.setIterationCount(Integer.parseInt(args[3]));
@@ -131,7 +148,7 @@ public class RmiBankClient extends Thread {
 //		client.runMultipleClients();
 //		System.out.println("After multiple transfer of $10");
 //		client.checkTotalBalanceInAllAccounts(client, false);
-		client.configInitialization("ConfigFile");
+		client.configInitialization(args[1]);
 		writer.close();
 		System.exit(0);
 	}
@@ -151,15 +168,22 @@ public class RmiBankClient extends Thread {
 			Random random = new Random();
 			int sourceAccount = random.nextInt(10) + 1;
 			int destinationAccount;
+			int transferAmount = 600;
 			while ((destinationAccount = (random.nextInt(10) + 1)) == sourceAccount) {
 			}
 			TransferResponse response = null;
 			try {
+
+				log(clientId+"\t"+serverId+"\t"+"REQ"+"\t"+System.currentTimeMillis()
+						+"\t"+"Transfer"+"{"+sourceAccount+","+destinationAccount+","+transferAmount+"}");
 				response = (TransferResponse) transferMoney(sourceAccount,
-						destinationAccount, 600, serverId);
-				if (response.status.equals("FAILED"))
-					log("Response:{" + response.status + "}" + "  {Source Account:" + sourceAccount
-							+ " Destination Account:" + destinationAccount + "}");
+						destinationAccount, transferAmount, serverId);
+				log(clientId+"\t"+serverId+"\t"+"REP"+"\t"+System.currentTimeMillis()+"\t"
+						+response.status);
+
+				//if (response.status.equals("FAILED"))
+//					log("Response:{" + response.status + "}" + "  {Source Account:" + sourceAccount
+//							+ " Destination Account:" + destinationAccount + "}");
 			} catch (RemoteException e) {
 				e.printStackTrace();
 			} catch (InterruptedException e) {
@@ -171,8 +195,10 @@ public class RmiBankClient extends Thread {
 
 	private TransferResponse transferMoney(int sourceAccount, int destinationAccount, int amount, int serverId)
 			throws RemoteException, InterruptedException {
-		TransferRequest request = new TransferRequest("Transfer", sourceAccount, destinationAccount, amount, "Client");
+		TransferRequest request = new TransferRequest("Transfer", sourceAccount, destinationAccount, amount, "Client", clientId);
 		TransferResponse response = (TransferResponse) serverHandles.get(serverId).sendRequest(request);
+
+
 		return response;
 	}
 
@@ -182,14 +208,14 @@ public class RmiBankClient extends Thread {
 		return response;
 	}
 
-	private void runMultipleClients() throws InterruptedException {
-		for (int i = 0; i < threadCount; i++) {
-			RmiBankClient client = new RmiBankClient();
-			client.start();
-			client.join();
-		}
-
-	}
+//	private void runMultipleClients() throws InterruptedException {
+//		for (int i = 0; i < threadCount; i++) {
+//			RmiBankClient client = new RmiBankClient();
+//			client.start();
+//			client.join();
+//		}
+//
+//	}
 
 	private void createAcoountIdList() {
 		for (Integer accountId : accountWithBalance.keySet()) {

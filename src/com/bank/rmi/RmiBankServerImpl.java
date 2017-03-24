@@ -16,6 +16,8 @@ import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.bank.*;
 import com.bank.*;
@@ -25,6 +27,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 
 
 	//Newly Added variables
+	public Lock lock;
 	public static Integer timestamp = 0;
 	public static int accountId = 1;
 	public static List<ServerDetail> serverDetails;
@@ -76,10 +79,24 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 						//PriorityQueue<Request> tempReq = new PriorityQueue<Request>();
 						Request req = tempReq.peek();
 						switch( req.getRequestName()){
-							case "Transfer": transferAmount((TransferRequest) req );
-											break;
+							case "Transfer":
+								TransferRequest treq = (TransferRequest)req;
+								Response rs;
+								log(treq.clientId + "\t" +"PROCESS" + "\t" + System.currentTimeMillis() + "\t"
+										+ treq.getLamportClock().toString());
+								rs = (TransferResponse)transferAmount(treq);
+								treq.response = rs;
+								treq.isLock = false;
+								//treq.lock.unlock();
+								break;
 							case "Halt":
+								HaltRequest hreq = (HaltRequest)req;
 								System.out.println("Server received halt message and would stop");
+								hreq.response = new TransferResponse("Halt received");
+
+								for(int sid : accounts.keySet()){
+									System.out.println("account id:" + sid + "Amoount :" +accounts.get(sid).balance);
+								}
 								break;
 						}
 
@@ -110,11 +127,19 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 	}
 
 	public Response sendRequest(Request request) throws RemoteException, InterruptedException {
+		//request.lock = new ReentrantLock();
 		RmiBankServerImpl server = new RmiBankServerImpl(request, new ArrayList<Response>());
 		Thread thread = new Thread(server);
 		thread.start();
 		thread.join();
-		return new TransferResponse("OK");//TO-DO
+		if( this.myDetail.id == request.serverId && request.getRequestName().equals("Transfer")){
+			while( request.response == null){
+				Thread.sleep(1);
+			}
+			return request.response;//TO-DO
+		}
+		return new TransferResponse("OK");
+
 	}
 
 	public void lookupPeer() {
@@ -125,7 +150,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 			System.out.println("Looking for peer:" + location);
 			while(true) {
 				try {
-					Thread.sleep(50);
+					Thread.sleep(200);
 					RmiBankServer peerHandle = (RmiBankServer)Naming.lookup(location);
 					peerHandles.put(hostId, peerHandle);
 					System.out.println("Found peer " + location);
@@ -135,10 +160,11 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 					//loadInfoTable.put(host, peerLoadInfo);
 					break;
 				} catch(Exception e) {
-					System.out.println("Error locating peer " + location);
+					System.out.print(".");
 				}
 			}
 		}
+		System.out.println("Successfully found all peer server. Waiting for client requests.");
 	}
 	public void init()
 			throws IOException, AlreadyBoundException {
@@ -159,7 +185,6 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 			pendingRequestQueue.put(sd.id, new PriorityBlockingQueue<Request>());
 		}
 
-
 		//Create 10 accounts
 		for( int i=0; i<10; i++ ){
 			CreateAccountResponse res = (CreateAccountResponse)createAccount ( new CreateAccountRequest("CreateAcccount", "Server") );
@@ -167,10 +192,11 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		}
 
 		System.out.println("Successfully deposited 1000 to 10 account");
-		lookupPeer();
 
 		Thread req = new Thread(new RequestExecutor());
 		req.start();
+
+		lookupPeer();
 	}
 
 	public void processTransferRequest(TransferRequest transferRequest) throws RemoteException, InterruptedException {
@@ -178,15 +204,26 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 
 		if( transferRequest.getRequestOrigin().equals("Client")) { //Send Request to all the server
 
+
 			synchronized (timestamp) { //Increment timestamp)
 				timestamp++;
 			}
 			transferRequest.setRequestOrigin("Server");
 			transferRequest.setLamportClock(new LamportClock(timestamp, myDetail.id));
-				for (int serverId : peerHandles.keySet()) {
+			transferRequest.serverId = myDetail.id;
+			log(transferRequest.clientId + "\t" +"CLIENT-REQ" + "\t" + System.currentTimeMillis() + "\t"
+					+ transferRequest.getLamportClock().toString() + "\t" + transferRequest.getRequestName()
+					+ "\t" + "{" + transferRequest.getSourceUid() + "," + transferRequest.getDestinationUid()+ "," + transferRequest.getAmount() +"}");
+
+			for (int serverId : peerHandles.keySet()) {
 					peerHandles.get(serverId).sendRequest(transferRequest);
 			}
 		} else if( transferRequest.getRequestOrigin().equals("Server")) { //Send Ack to all the server
+
+			log(transferRequest.clientId + "\t" +"SER-REQ" + "\t" + transferRequest.serverId + "\t" + System.currentTimeMillis() + "\t"
+					+ transferRequest.getLamportClock().toString() + "\t" + transferRequest.getRequestName()
+					+ "\t" + "{" + transferRequest.getSourceUid() + "," + transferRequest.getDestinationUid()+ "," + transferRequest.getAmount() +"}");
+			;
 
 			AckRequest ackReq = new AckRequest("Ack", "Server");
 			synchronized (timestamp){
@@ -204,11 +241,48 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 
 
 
+	public void processHaltRequest(HaltRequest haltRequest) throws RemoteException, InterruptedException {
+
+
+		if( haltRequest.getRequestOrigin().equals("Client")) { //Send Request to all the server
+
+
+			synchronized (timestamp) { //Increment timestamp)
+				timestamp++;
+			}
+			haltRequest.setRequestOrigin("Server");
+			haltRequest.setLamportClock(new LamportClock(timestamp, myDetail.id));
+			haltRequest.serverId = myDetail.id;
+			log(haltRequest.clientId + "\t" +"CLIENT-REQ" + "\t" + System.currentTimeMillis() + "\t"
+					+ haltRequest.getLamportClock().toString() + "\t" + haltRequest.getRequestName());
+
+			for (int serverId : peerHandles.keySet()) {
+				peerHandles.get(serverId).sendRequest(haltRequest);
+			}
+		} else if( haltRequest.getRequestOrigin().equals("Server")) { //Send Ack to all the server
+
+			log(haltRequest.clientId + "\t" +"SER-REQ" + "\t" + haltRequest.serverId + "\t" + System.currentTimeMillis() + "\t"
+					+ haltRequest.getLamportClock().toString() + "\t" + haltRequest.getRequestName());
+			;
+
+			AckRequest ackReq = new AckRequest("Ack", "Server");
+			synchronized (timestamp){
+				timestamp = Math.max(timestamp, haltRequest.getLamportClock().timestamp);
+				timestamp++;
+			}
+			ackReq.setLamportClock(new LamportClock(timestamp, myDetail.id));
+			addToExecutionQueue(ackReq); // Also add acknowledgement to your queue -- very important
+			for (int serverId : peerHandles.keySet()) {
+				peerHandles.get(serverId).sendRequest(ackReq);
+			}
+		}
+		addToExecutionQueue(haltRequest);
+	}
+
+
+
 	@Override
 	public void run() {
-
-
-
 
 		if (clientRequest instanceof CreateAccountRequest) {
 			Response response = createAccount((CreateAccountRequest) clientRequest);
@@ -220,13 +294,14 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		}
 		if (clientRequest instanceof TransferRequest) {
 			try {
+				//((TransferRequest) clientRequest).lock.lock();
 				processTransferRequest((TransferRequest)clientRequest);
+				//((TransferRequest) clientRequest).lock.lock();
 			} catch (RemoteException e) {
 				e.printStackTrace();
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-
 
 			//Response response = transferAmount((TransferRequest) clientRequest);
 			//responseList.add(response);
@@ -239,7 +314,13 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		}
 		if (clientRequest instanceof HaltRequest) {
 
-			addToExecutionQueue(clientRequest);
+			try {
+				processHaltRequest((HaltRequest) clientRequest);
+			} catch (RemoteException e) {
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 			//Response response = transferAmount((TransferRequest) clientRequest);
 			//responseList.add(response);
 		}
@@ -247,6 +328,14 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 			Response response = checkBalance((GetBalanceRequest) clientRequest);
 			responseList.add(response);
 		}
+//		while(clientRequest.isLock){
+//			try {
+//				Thread.sleep(100);
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
+//		}
+		//lock.lock();
 	}
 
 	private synchronized Response checkBalance(GetBalanceRequest clientRequest) {
@@ -258,8 +347,9 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		return response;
 	}
 
-	private synchronized void log(Request clientRequest, Response serverResponse) {
-		writer.println("Request:{" + clientRequest + "}" + "  Response:{" + serverResponse + "}");
+	private synchronized void log(String msg) {
+		writer.println(msg);
+		//writer.println("Request:{" + clientRequest + "}" + "  Response:{" + serverResponse + "}");
 		//writer.flush();
 	}
 
@@ -275,7 +365,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 			}
 		} else
 			response = new TransferResponse("FAILED");
-		log(clientRequest, response);
+		//log(clientRequest, response);
 		return response;
 	}
 
@@ -321,22 +411,37 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		//args[1] = "configFile";
 
 		RmiBankServerImpl server = new RmiBankServerImpl(args[0]);
-		server.configInitialization(args[0], "configFile");
+		server.configInitialization(args[0], args[1]);
 		server.init();
 	}
 
 
 
 
-	public void configInitialization(String serverId, String configFile){
+	public void configInitialization(String serverId, String configFile) throws IOException {
+
+
 		int myServerId = Integer.parseInt(serverId);
 
 		serverDetails = new ArrayList<ServerDetail>();
 		peerList = new HashMap<Integer, ServerDetail>();
 		peerHandles = new HashMap<Integer, RmiBankServer>();
 
-		serverDetails.add(new ServerDetail(1,"localhost",4000));
-		serverDetails.add(new ServerDetail(2,"localhost",4001));
+		FileInputStream fis = new FileInputStream(configFile);
+		BufferedReader br = new BufferedReader(new InputStreamReader(fis));
+		String line = null;
+		while ((line = br.readLine()) != null) {
+			System.out.println(line);
+			String[] splited = line.split("\\s+");
+			if( splited[0].charAt(0) == '#' ) continue;
+			serverDetails.add(new ServerDetail(Integer.parseInt(splited[1]),splited[0],Integer.parseInt(splited[2])));
+		}
+		br.close();
+
+
+
+		//serverDetails.add(new ServerDetail(1,"localhost",4000));
+		//serverDetails.add(new ServerDetail(2,"localhost",4001));
 		//serverDetails.add(new ServerDetail(3,"localhost",4002));
 
 		for( ServerDetail sd : serverDetails){
