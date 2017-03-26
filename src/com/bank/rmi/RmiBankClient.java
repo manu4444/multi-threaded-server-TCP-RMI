@@ -60,19 +60,8 @@ public class RmiBankClient extends Thread {
 		}
 		TransferResponse response = (TransferResponse) serverHandles.get(0).sendRequest(new HaltRequest("Halt", "Client", 0));
 
-		System.out.println("Everything done. Total execution time: " + (System.currentTimeMillis() - startTime)/1000 + "secs");
-	}
-
-	class ServerDetail{
-		String hostname;
-		int port;
-		int id;
-
-		ServerDetail(int id, String hostname, int port){
-			this.hostname = hostname;
-			this.port = port;
-			this.id = id;
-		}
+		System.out.println("Everything done.");
+		//System.out.println("Everything done. Total execution time: " + (System.currentTimeMillis() - startTime)/1000 + "secs");
 	}
 
 
@@ -80,7 +69,7 @@ public class RmiBankClient extends Thread {
 		for( Integer hostId : serverDetails.keySet()){
 
 			ServerDetail remoteHost = serverDetails.get(hostId);
-			String location = "//" + remoteHost.hostname + ":" + Registry.REGISTRY_PORT + "/RmiBankServer" + remoteHost.id;
+			String location = "//" + remoteHost.hostname + ":" + remoteHost.rmiPort + "/RmiBankServer";
 			System.out.println("Looking for peer:" + location);
 			while(true) {
 				try {

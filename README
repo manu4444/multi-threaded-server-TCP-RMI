@@ -2,13 +2,15 @@
 A. Instructions on how to run and test your program.
 --------------------------------------------------------------
 A.1     Change present working directory to src path and compile all java classes by:
-            javac *.java
+            javac */*.java
 A.2     Start server by
-            java -Djava.security.manager -Djava.security.policy=java.policy.applet RmiBankServerImpl serverId configFile
+            java -Djava.security.manager -Djava.security.policy=java.policy.applet com/bank/rmi/RmiBankServerImpl serverId configFile
 A.3     Run client by
-            java -Djava.security.manager -Djava.security.policy=java.policy.applet RmiBankClient threadCount configFile
+            java -Djava.security.manager -Djava.security.policy=java.policy.applet com/bank/rmi/RmiBankClient threadCount configFile
 
 Note: RMI is started programatically hence does not need to be externally triggered
+
+
 
 
 

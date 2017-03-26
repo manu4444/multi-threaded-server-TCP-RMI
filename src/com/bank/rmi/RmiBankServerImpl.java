@@ -162,7 +162,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		for( Integer hostId : peerList.keySet()){
 
 			ServerDetail remoteHost = peerList.get(hostId);
-			String location = "//" + remoteHost.hostname + ":" + Registry.REGISTRY_PORT + "/RmiBankServer" + remoteHost.id;
+			String location = "//" + remoteHost.hostname + ":" + remoteHost.rmiPort + "/RmiBankServer";
 			System.out.println("Looking for peer:" + location);
 			while(true) {
 				try {
@@ -185,12 +185,12 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		RmiBankServerImpl bankServer = new RmiBankServerImpl(Integer.toString(myDetail.id));
 		Registry localRegistry;
 		try {
-			LocateRegistry.createRegistry(Registry.REGISTRY_PORT);
+			LocateRegistry.createRegistry(myDetail.rmiPort);
 		} catch (ExportException e){
 			//registry already running and do nothing
 		}
-		localRegistry = LocateRegistry.getRegistry(Registry.REGISTRY_PORT);
-		localRegistry.rebind("RmiBankServer" + myDetail.id, bankServer);
+		localRegistry = LocateRegistry.getRegistry(myDetail.rmiPort);
+		localRegistry.rebind("RmiBankServer", bankServer);
 
 		for( ServerDetail sd : serverDetails){
 			pendingRequestQueue.put(sd.id, new PriorityBlockingQueue<Request>());
@@ -406,18 +406,6 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 			} else {
 				peerList.put(sd.id, sd);
 			}
-		}
-	}
-
-	class ServerDetail{
-		String hostname;
-		int port;
-		int id;
-
-		ServerDetail(int id, String hostname, int port){
-			this.hostname = hostname;
-			this.port = port;
-			this.id = id;
 		}
 	}
 }
