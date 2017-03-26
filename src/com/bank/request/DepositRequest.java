@@ -15,7 +15,6 @@ public class DepositRequest extends Request implements Serializable {
 		this.requestOrigin = requestOrigin;
 	}
 
-
 	public int getUid() {
 		return uid;
 	}

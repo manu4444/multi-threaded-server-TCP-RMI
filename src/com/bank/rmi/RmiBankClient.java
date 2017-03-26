@@ -1,19 +1,13 @@
 package com.bank.rmi;
 
 import com.bank.request.*;
-import com.bank.response.BalanceResponse;
-import com.bank.response.CreateAccountResponse;
-import com.bank.response.DepositResponse;
 import com.bank.response.TransferResponse;
 
 import java.io.*;
 import java.rmi.Naming;
-import java.rmi.RMISecurityManager;
 import java.rmi.RemoteException;
 import java.rmi.registry.Registry;
 import java.util.*;
-
-import com.bank.*;
 
 public class RmiBankClient extends Thread {
 	private static String host;
@@ -21,7 +15,7 @@ public class RmiBankClient extends Thread {
 	private static Hashtable<Integer, Integer> accountWithBalance = new Hashtable<Integer, Integer>();
 	private static List<Integer> accountIds = new ArrayList<Integer>(Arrays.asList(1,2,3,4,5,6,7,8,9,10));
 	private static int threadCount=5;
-	private static int  iterationCount = 20;
+	private static int  iterationCount = 100;
 	private static RmiBankServer dateServer;
 	private static PrintWriter writer;
 	public int clientId;
@@ -37,15 +31,11 @@ public class RmiBankClient extends Thread {
 		RmiBankClient.iterationCount = iterationCount;
 	}
 
-	//Manu
-
 	public static Map<Integer, ServerDetail> serverDetails;
-	//Map<Integer, ServerDetail> idToServer;
 	public static Map<Integer, RmiBankServer> serverHandles;
 
 
 	public void configInitialization(String configFile) throws InterruptedException, IOException {
-		//int myServerId = Integer.parseInt(serverId);
 
 		serverDetails = new HashMap<Integer, ServerDetail>();
 		serverHandles = new HashMap<Integer, RmiBankServer>();
@@ -60,28 +50,17 @@ public class RmiBankClient extends Thread {
 			serverDetails.put(Integer.parseInt(splited[1]),new ServerDetail(Integer.parseInt(splited[1]),splited[0],Integer.parseInt(splited[2])));
 		}
 		br.close();
-
-
-
-		//serverDetails.put(1, new ServerDetail(1,"localhost",4000));
-		//serverDetails.put(2, new ServerDetail(2,"localhost",4001));
-		//serverDetails.put(3, new ServerDetail(3,"localhost",4002));
-
 		lookupServer();
 
-		//int threadCount = 2;
-		//Start 24 thread processes
-
+		long startTime = System.currentTimeMillis();
 		for (int i = 1; i <= threadCount; i++) {
 			RmiBankClient client = new RmiBankClient(i);
 			client.start();
 			client.join();
 		}
-
 		TransferResponse response = (TransferResponse) serverHandles.get(0).sendRequest(new HaltRequest("Halt", "Client", 0));
 
-		System.out.println("Everything done");
-		//myDetail = idToServer.get();
+		System.out.println("Everything done. Total execution time: " + (System.currentTimeMillis() - startTime)/1000 + "secs");
 	}
 
 	class ServerDetail{
@@ -109,10 +88,6 @@ public class RmiBankClient extends Thread {
 					RmiBankServer peerHandle = (RmiBankServer)Naming.lookup(location);
 					serverHandles.put(hostId, peerHandle);
 					System.out.println("Found peer " + location);
-					//wpoolHandles.put(host, peerHandle);
-					//L..oadInfo peerLoadInfo = new LoadInfo(0,host);
-					//peerLoadInfo.load = 0;
-					//loadInfoTable.put(host, peerLoadInfo);
 					break;
 				} catch(Exception e) {
 					System.out.println("Error locating peer " + location);
@@ -121,33 +96,10 @@ public class RmiBankClient extends Thread {
 		}
 	}
 
-
-
-
 	public static void main(String args[]) throws Exception {
-		//host = args[0];
 		writer = new PrintWriter("clientLogfile");
 		RmiBankClient client = new RmiBankClient(0);
 		setThreadCount(Integer.parseInt(args[0]));
-		//portNumber = Integer.parseInt(args[1]);
-		//RmiBankClient.setThreadCount(Integer.parseInt(args[2]));
-		//RmiBankClient.setIterationCount(Integer.parseInt(args[3]));
-//		System.setSecurityManager(new RMISecurityManager());
-//		//dateServer = new RmiBankServerImpl();
-//		//dateServer = (RmiBankServer) Naming.lookup("//" + host + ":" + portNumber + "/RmiBankServer");
-//		RmiBankClient client = new RmiBankClient();
-//		for (int i = 0; i < 100; i++) {
-//			CreateAccountResponse response = (CreateAccountResponse) client.createAccount();
-//			accountWithBalance.put(response.getUid(), 0);
-//		}
-//		for (Integer accountId : accountWithBalance.keySet()) {
-//			DepositResponse response = (DepositResponse) client.depositAmount(accountId, 100);
-//		}
-//		client.checkTotalBalanceInAllAccounts(client, false);
-//		client.createAcoountIdList();
-//		client.runMultipleClients();
-//		System.out.println("After multiple transfer of $10");
-//		client.checkTotalBalanceInAllAccounts(client, false);
 		client.configInitialization(args[1]);
 		writer.close();
 		System.exit(0);
@@ -155,15 +107,12 @@ public class RmiBankClient extends Thread {
 
 	public void run() {
 
-		//int iterationCount = 5;
 		for (int i = 0; i < iterationCount; i++) {
 
 			//Selecting random server
 			List<Integer> keysAsArray = new ArrayList<Integer>(serverDetails.keySet());
 			Random r = new Random();
 			int serverId = keysAsArray.get(r.nextInt(keysAsArray.size()));
-
-
 
 			Random random = new Random();
 			int sourceAccount = random.nextInt(10) + 1;
@@ -181,9 +130,6 @@ public class RmiBankClient extends Thread {
 				log(clientId+"\t"+serverId+"\t"+"REP"+"\t"+System.currentTimeMillis()+"\t"
 						+response.status);
 
-				//if (response.status.equals("FAILED"))
-//					log("Response:{" + response.status + "}" + "  {Source Account:" + sourceAccount
-//							+ " Destination Account:" + destinationAccount + "}");
 			} catch (RemoteException e) {
 				e.printStackTrace();
 			} catch (InterruptedException e) {
@@ -197,56 +143,13 @@ public class RmiBankClient extends Thread {
 			throws RemoteException, InterruptedException {
 		TransferRequest request = new TransferRequest("Transfer", sourceAccount, destinationAccount, amount, "Client", clientId);
 		TransferResponse response = (TransferResponse) serverHandles.get(serverId).sendRequest(request);
-
-
 		return response;
 	}
-
-	private DepositResponse depositAmount(Integer accountId, int amount) throws RemoteException, InterruptedException {
-		DepositRequest request = new DepositRequest("Deposit", accountId, amount, "Client");
-		DepositResponse response = (DepositResponse) dateServer.sendRequest(request);
-		return response;
-	}
-
-//	private void runMultipleClients() throws InterruptedException {
-//		for (int i = 0; i < threadCount; i++) {
-//			RmiBankClient client = new RmiBankClient();
-//			client.start();
-//			client.join();
-//		}
-//
-//	}
 
 	private void createAcoountIdList() {
 		for (Integer accountId : accountWithBalance.keySet()) {
 			accountIds.add(accountId);
 		}
-	}
-
-	private int checkTotalBalanceInAllAccounts(RmiBankClient client, boolean printAllRecords)
-			throws RemoteException, InterruptedException {
-		int total = 0;
-		for (Integer accountId : accountWithBalance.keySet()) {
-			BalanceResponse response = (BalanceResponse) client.checkBalance(accountId);
-			if (printAllRecords)
-				System.out.println(response.getBalance());
-			total += response.getBalance();
-		}
-		System.out.println("Total Amount deposited in all account:" + total);
-		return total;
-
-	}
-
-	private BalanceResponse checkBalance(Integer accountId) throws RemoteException, InterruptedException {
-		GetBalanceRequest request = new GetBalanceRequest("Balance", accountId, "Client");
-		BalanceResponse response = (BalanceResponse) dateServer.sendRequest(request);
-		return response;
-	}
-
-	private CreateAccountResponse createAccount() throws RemoteException, InterruptedException {
-		CreateAccountRequest request = new CreateAccountRequest("CreateAcccount", "Client");
-		CreateAccountResponse response = (CreateAccountResponse) dateServer.sendRequest(request);
-		return response;
 	}
 
 	private synchronized void log(String message) {

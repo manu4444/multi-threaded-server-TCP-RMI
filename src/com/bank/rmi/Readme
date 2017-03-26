@@ -1,9 +1,0 @@
-The program follows all the instruction specified in the assignment PDF.Steps to run the program:
-1)Change present working directory to src path and compile all java classes by:
-        javac *.java
-2)Then run
-        rmiregistry portNumber&
-3)Start server by
-        java -Djava.security.manager -Djava.security.policy=java.policy.applet RmiBankServerImpl portNumber&
-4)Run client by
-        java -Djava.security.manager -Djava.security.policy=java.policy.applet RmiBankClient serverHostname severPortnumber threadCount iterationCount

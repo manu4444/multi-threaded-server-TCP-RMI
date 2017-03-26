@@ -10,8 +10,6 @@ public class TransferRequest extends Request implements Serializable {
 	int sourceUid, destinationUid, amount;
 	public int clientId;
 
-
-
 	@Override
 	protected void setRequestName(String requestName) {
 		this.requestName = requestName;
@@ -21,7 +19,6 @@ public class TransferRequest extends Request implements Serializable {
 	public void setRequestOrigin(String requestOrigin) {
 		this.requestOrigin = requestOrigin;
 	}
-
 
 	public int getSourceUid() {
 		return sourceUid;

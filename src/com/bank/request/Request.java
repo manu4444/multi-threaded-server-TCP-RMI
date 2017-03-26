@@ -12,8 +12,6 @@ public abstract class Request implements Serializable, Comparable<Request>{
 	protected String requestOrigin;
 	protected LamportClock lamportClock = new LamportClock(-1,-1);
 	public Response response;
-	public Lock lock;
-	public boolean isLock = true;
 	public int serverId;
 
 	protected abstract void setRequestName(String requestName);
