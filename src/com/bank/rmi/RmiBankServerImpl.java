@@ -32,7 +32,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 	public static Map<Integer, PriorityBlockingQueue<Request>> pendingRequestQueue = new HashMap<Integer, PriorityBlockingQueue<Request>>();
 	private static Hashtable<Integer, Account> accounts = new Hashtable<Integer, Account>();
 	private Request clientRequest;
-	private static PrintWriter writer,writerForAllReq;
+	private static PrintWriter writer;
 	private List<Response> responseList = null;;
 
 	public synchronized void  addToExecutionQueue(Request req){
@@ -44,7 +44,6 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 
 		try {
 			reqQueue.add(req);
-			writerForAllReq.println(req.toString());
 		}catch (Exception e){
 			e.printStackTrace();
 		}
@@ -138,7 +137,6 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 
 	public RmiBankServerImpl(String serverId) throws IOException {
 		writer = new PrintWriter(new FileWriter("severLogfile"+Integer.parseInt(serverId)),true);
-		writerForAllReq = new PrintWriter(new FileWriter("severLogfile"+Integer.parseInt(serverId)+"AllReq"),true);
 	}
 
 	public Response sendRequest(Request request) throws RemoteException, InterruptedException {
