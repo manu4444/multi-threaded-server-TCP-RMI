@@ -23,11 +23,15 @@ import com.bank.*;
 import com.bank.*;
 import jdk.management.resource.ResourceRequest;
 
+import static java.lang.System.exit;
+import static java.lang.System.setOut;
+
 public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankServer, Runnable {
 
 
 	//Newly Added variables
 	public Lock lock;
+	public static Map<String, Long> requestProcessingTime = new HashMap<String, Long>();
 	public static Integer timestamp = 0;
 	public static int accountId = 1;
 	public static List<ServerDetail> serverDetails;
@@ -43,6 +47,10 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 	private List<Response> responseList = null;;
 
 	public synchronized void  addToExecutionQueue(Request req){
+
+		if( req.getRequestName().equals("Transfer") ) {
+			requestProcessingTime.put(req.getLamportClock().toString(), System.currentTimeMillis());
+		}
 		PriorityBlockingQueue<Request> reqQueue = pendingRequestQueue.get(req.getLamportClock().serverId);
 
 		try {
@@ -85,6 +93,8 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 								log(treq.clientId + "\t" +"PROCESS" + "\t" + System.currentTimeMillis() + "\t"
 										+ treq.getLamportClock().toString());
 								rs = (TransferResponse)transferAmount(treq);
+								long startTime = requestProcessingTime.get(treq.getLamportClock().toString());
+								requestProcessingTime.put(treq.getLamportClock().toString(), System.currentTimeMillis() - startTime);
 								treq.response = rs;
 								treq.isLock = false;
 								//treq.lock.unlock();
@@ -94,9 +104,31 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 								System.out.println("Server received halt message and would stop");
 								hreq.response = new TransferResponse("Halt received");
 
+								log("-------------------------------------------------------------------");
+								log("Balance in each account");
+								log("-------------------------------------------------------------------");
 								for(int sid : accounts.keySet()){
-									System.out.println("account id:" + sid + "Amoount :" +accounts.get(sid).balance);
+									log("account id:" + sid + "\tAmount :" +accounts.get(sid).balance);
+									System.out.println("account id:" + sid + "\tAmount :" +accounts.get(sid).balance);
 								}
+
+								log("-------------------------------------------------------------------");
+								log("Pending Requests");
+								log("-------------------------------------------------------------------");
+								pendingRequestQueue.get(req.getLamportClock().serverId).remove();
+								for( int server: pendingRequestQueue.keySet()){
+									log("Server : "+server+pendingRequestQueue.get(server).toString());
+								}
+
+								log("-------------------------------------------------------------------");
+								long t = 0;
+								for( String lamportClock : requestProcessingTime.keySet() ){
+									t += requestProcessingTime.get(lamportClock);
+								}
+								log("Average Request Processing Time (milliseconds):"+t/requestProcessingTime.size());
+								System.out.println("Average Request Processing Time (milliseconds):"+t/requestProcessingTime.size() );
+
+								exit(0);
 								break;
 						}
 
@@ -128,11 +160,13 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 
 	public Response sendRequest(Request request) throws RemoteException, InterruptedException {
 		//request.lock = new ReentrantLock();
+
 		RmiBankServerImpl server = new RmiBankServerImpl(request, new ArrayList<Response>());
 		Thread thread = new Thread(server);
 		thread.start();
 		thread.join();
-		if( this.myDetail.id == request.serverId && request.getRequestName().equals("Transfer")){
+		if( this.myDetail.id == request.serverId &&
+				(request.getRequestName().equals("Transfer") || request.getRequestName().equals("Halt")) ){
 			while( request.response == null){
 				Thread.sleep(1);
 			}
