@@ -60,8 +60,8 @@ public class RmiBankClient extends Thread {
 		}
 		TransferResponse response = (TransferResponse) serverHandles.get(0).sendRequest(new HaltRequest("Halt", "Client", 0));
 
-		System.out.println("Everything done.");
-		//System.out.println("Everything done. Total execution time: " + (System.currentTimeMillis() - startTime)/1000 + "secs");
+		System.out.println("Everything done. Please check log file clientLogfile for more detail.");
+		System.out.println("Everything done. Total execution time: " + (System.currentTimeMillis() - startTime)/1000 + "secs");
 	}
 
 
@@ -106,12 +106,12 @@ public class RmiBankClient extends Thread {
 			Random random = new Random();
 			int sourceAccount = random.nextInt(10) + 1;
 			int destinationAccount;
-			int transferAmount = 600;
+			int transferAmount = 10;
 			while ((destinationAccount = (random.nextInt(10) + 1)) == sourceAccount) {
 			}
 			TransferResponse response = null;
 			try {
-
+				System.out.println(" REQ Transfer"+"{"+sourceAccount+","+destinationAccount+","+transferAmount+"}");
 				log(clientId+"\t"+serverId+"\t"+"REQ"+"\t"+System.currentTimeMillis()
 						+"\t"+"Transfer"+"{"+sourceAccount+","+destinationAccount+","+transferAmount+"}");
 				response = (TransferResponse) transferMoney(sourceAccount,

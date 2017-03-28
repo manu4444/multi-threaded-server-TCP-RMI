@@ -38,6 +38,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 	public synchronized void  addToExecutionQueue(Request req){
 
 		if( req.getRequestName().equals("Transfer") ) {
+			System.out.println("Transfer Request Received"+req.getLamportClock().toString());
 			requestProcessingTime.put(req.getLamportClock().toString(), System.currentTimeMillis());
 		}
 		PriorityBlockingQueue<Request> reqQueue = pendingRequestQueue.get(req.getLamportClock().serverId);
@@ -58,7 +59,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 			PriorityBlockingQueue<Request> tempReq = new PriorityBlockingQueue<Request>();
 			while( true ){
 				try {
-					Thread.sleep(10);
+					Thread.sleep(1);
 					boolean sizeFull = true;
 					tempReq.clear();
 					//checking size of each
@@ -88,7 +89,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 								HaltRequest hreq = (HaltRequest)req;
 								System.out.println("Server received halt message and would stop");
 								hreq.response = new TransferResponse("Halt received");
-
+								Thread.sleep(50); // Very Important for the parent thread to return to client
 								log("-------------------------------------------------------------------");
 								log("Balance in each account");
 								log("-------------------------------------------------------------------");
@@ -101,18 +102,28 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 								log("Pending Requests");
 								log("-------------------------------------------------------------------");
 								pendingRequestQueue.get(req.getLamportClock().serverId).remove();
+
+								PriorityBlockingQueue<Request> requestsQueue;
 								for( int server: pendingRequestQueue.keySet()){
-									log("Server : "+server+pendingRequestQueue.get(server).toString());
+									requestsQueue = pendingRequestQueue.get(server);
+									log("Server "+server+" : ");
+									for( Request req1 : requestsQueue){
+										if( req1.getRequestName().equals("Transfer")){
+											log(req1.toString());
+										}
+									}
 								}
 
 								log("-------------------------------------------------------------------");
 								long t = 0;
 								for( String lamportClock : requestProcessingTime.keySet() ){
+
 									t += requestProcessingTime.get(lamportClock);
 								}
 								log("Average Request Processing Time (milliseconds):"+(float)t/requestProcessingTime.size());
 								System.out.println("Average Request Processing Time (milliseconds):"+(float)t/requestProcessingTime.size() );
 
+								System.out.println("Everything done. Please check log file serverLogfile"+myDetail.id+" for more detail.");
 								exit(0);
 								break;
 						}
