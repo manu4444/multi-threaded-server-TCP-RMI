@@ -79,7 +79,7 @@ public class RmiBankClient extends Thread {
         }
         */
 
-		TransferResponse response = (TransferResponse) serverHandles.get(0).sendRequest(new HaltRequest("Halt", "Client", 0));
+		TransferResponse response = (TransferResponse) serverHandles.get(0).sendHalt(new HaltRequest("Halt", "Client", 0));
 
 		System.out.println("Everything done. Please check log file clientLogfile for more detail.");
 		System.out.println("Everything done. Total execution time: " + (System.currentTimeMillis() - startTime)/1000 + "secs");

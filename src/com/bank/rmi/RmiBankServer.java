@@ -16,5 +16,7 @@ public interface RmiBankServer extends Remote {
 			throws IOException, AlreadyBoundException;
 
 	Response sendRequest(Request request) throws RemoteException, InterruptedException;
+	Response sendAck(Request request) throws RemoteException, InterruptedException;
+	Response sendHalt(Request request) throws RemoteException, InterruptedException;
 
 }
