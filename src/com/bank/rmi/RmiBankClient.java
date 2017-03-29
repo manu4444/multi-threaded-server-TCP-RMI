@@ -8,6 +8,9 @@ import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.registry.Registry;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class RmiBankClient extends Thread {
 	private static String host;
@@ -53,11 +56,29 @@ public class RmiBankClient extends Thread {
 		lookupServer();
 
 		long startTime = System.currentTimeMillis();
-		for (int i = 1; i <= threadCount; i++) {
-			RmiBankClient client = new RmiBankClient(i);
-			client.start();
-			client.join();
-		}
+        ExecutorService executor = Executors.newCachedThreadPool();
+        for (int i = 1; i <= threadCount; i++) {
+            executor.execute(new RmiBankClient(i));
+        }
+
+        executor.shutdown();
+        try {
+            while (!executor.awaitTermination(10, TimeUnit.SECONDS)) {
+                System.out.println("Awaiting completion of threads.");
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+
+        /*
+        for (int i = 1; i <= threadCount; i++) {
+            RmiBankClient client = new RmiBankClient(i);
+            client.start();
+            client.join();
+        }
+        */
+
 		TransferResponse response = (TransferResponse) serverHandles.get(0).sendRequest(new HaltRequest("Halt", "Client", 0));
 
 		System.out.println("Everything done. Please check log file clientLogfile for more detail.");

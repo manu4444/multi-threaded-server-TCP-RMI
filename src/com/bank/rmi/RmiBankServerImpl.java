@@ -22,6 +22,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 
 	//Newly Added variables
 	public static Map<String, Long> requestProcessingTime = new HashMap<String, Long>();
+    public static Object lockObj = new Object();
 	public static Integer timestamp = 0;
 	public static int accountId = 1;
 	public static List<ServerDetail> serverDetails;
@@ -56,87 +57,89 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		@Override
 		public void run() {
 
-			PriorityBlockingQueue<Request> tempReq = new PriorityBlockingQueue<Request>();
-			while( true ){
-				try {
-					Thread.sleep(1);
-					boolean sizeFull = true;
-					tempReq.clear();
-					//checking size of each
-					for( int serverId : pendingRequestQueue.keySet()){
-						if( pendingRequestQueue.get(serverId).size() <= 0){
-							sizeFull = false;
-							break;
-						} else {
-							tempReq.add(pendingRequestQueue.get(serverId).peek());
-						}
-					}
+            synchronized (lockObj) {
+                PriorityBlockingQueue<Request> tempReq = new PriorityBlockingQueue<Request>();
+                while (true) {
+                    try {
+                        Thread.sleep(1);
+                        boolean sizeFull = true;
+                        tempReq.clear();
+                        //checking size of each
+                        for (int serverId : pendingRequestQueue.keySet()) {
+                            if (pendingRequestQueue.get(serverId).size() <= 0) {
+                                sizeFull = false;
+                                break;
+                            } else {
+                                tempReq.add(pendingRequestQueue.get(serverId).peek());
+                            }
+                        }
 
-					if(sizeFull){
-						Request req = tempReq.peek();
-						switch( req.getRequestName()){
-							case "Transfer":
-								TransferRequest treq = (TransferRequest)req;
-								Response rs;
-								log(treq.clientId + "\t" +"PROCESS" + "\t" + System.currentTimeMillis() + "\t"
-										+ treq.getLamportClock().toString());
-								rs = (TransferResponse)transferAmount(treq);
-								long startTime = requestProcessingTime.get(treq.getLamportClock().toString());
-								requestProcessingTime.put(treq.getLamportClock().toString(), System.currentTimeMillis() - startTime);
-								treq.response = rs;
-								break;
-							case "Halt":
-								HaltRequest hreq = (HaltRequest)req;
-								System.out.println("Server received halt message and would stop");
-								hreq.response = new TransferResponse("Halt received");
-								Thread.sleep(50); // Very Important for the parent thread to return to client
-								log("-------------------------------------------------------------------");
-								log("Balance in each account");
-								log("-------------------------------------------------------------------");
-								for(int sid : accounts.keySet()){
-									log("account id:" + sid + "\tAmount :" +accounts.get(sid).balance);
-									System.out.println("account id:" + sid + "\tAmount :" +accounts.get(sid).balance);
-								}
+                        if (sizeFull) {
+                            Request req = tempReq.peek();
+                            switch (req.getRequestName()) {
+                                case "Transfer":
+                                    TransferRequest treq = (TransferRequest) req;
+                                    Response rs;
+                                    log(treq.clientId + "\t" + "PROCESS" + "\t" + System.currentTimeMillis() + "\t"
+                                            + treq.getLamportClock().toString());
+                                    rs = (TransferResponse) transferAmount(treq);
+                                    long startTime = requestProcessingTime.get(treq.getLamportClock().toString());
+                                    requestProcessingTime.put(treq.getLamportClock().toString(), System.currentTimeMillis() - startTime);
+                                    treq.response = rs;
+                                    break;
+                                case "Halt":
+                                    HaltRequest hreq = (HaltRequest) req;
+                                    System.out.println("Server received halt message and would stop");
+                                    hreq.response = new TransferResponse("Halt received");
+                                    Thread.sleep(50); // Very Important for the parent thread to return to client
+                                    log("-------------------------------------------------------------------");
+                                    log("Balance in each account");
+                                    log("-------------------------------------------------------------------");
+                                    for (int sid : accounts.keySet()) {
+                                        log("account id:" + sid + "\tAmount :" + accounts.get(sid).balance);
+                                        System.out.println("account id:" + sid + "\tAmount :" + accounts.get(sid).balance);
+                                    }
 
-								log("-------------------------------------------------------------------");
-								log("Pending Requests");
-								log("-------------------------------------------------------------------");
-								pendingRequestQueue.get(req.getLamportClock().serverId).remove();
+                                    log("-------------------------------------------------------------------");
+                                    log("Pending Requests");
+                                    log("-------------------------------------------------------------------");
+                                    pendingRequestQueue.get(req.getLamportClock().serverId).remove();
 
-								PriorityBlockingQueue<Request> requestsQueue;
-								for( int server: pendingRequestQueue.keySet()){
-									requestsQueue = pendingRequestQueue.get(server);
-									log("Server "+server+" : ");
-									for( Request req1 : requestsQueue){
-										if( req1.getRequestName().equals("Transfer")){
-											log(req1.toString());
-										}
-									}
-								}
+                                    PriorityBlockingQueue<Request> requestsQueue;
+                                    for (int server : pendingRequestQueue.keySet()) {
+                                        requestsQueue = pendingRequestQueue.get(server);
+                                        log("Server " + server + " : ");
+                                        for (Request req1 : requestsQueue) {
+                                            if (req1.getRequestName().equals("Transfer")) {
+                                                log(req1.toString());
+                                            }
+                                        }
+                                    }
 
-								log("-------------------------------------------------------------------");
-								long t = 0;
-								for( String lamportClock : requestProcessingTime.keySet() ){
+                                    log("-------------------------------------------------------------------");
+                                    long t = 0;
+                                    for (String lamportClock : requestProcessingTime.keySet()) {
 
-									t += requestProcessingTime.get(lamportClock);
-								}
-								log("Average Request Processing Time (milliseconds):"+(float)t/requestProcessingTime.size());
-								System.out.println("Average Request Processing Time (milliseconds):"+(float)t/requestProcessingTime.size() );
+                                        t += requestProcessingTime.get(lamportClock);
+                                    }
+                                    log("Average Request Processing Time (milliseconds):" + (float) t / requestProcessingTime.size());
+                                    System.out.println("Average Request Processing Time (milliseconds):" + (float) t / requestProcessingTime.size());
 
-								System.out.println("Everything done. Please check log file serverLogfile"+myDetail.id+" for more detail.");
-								exit(0);
-								break;
-						}
+                                    System.out.println("Everything done. Please check log file serverLogfile" + myDetail.id + " for more detail.");
+                                    exit(0);
+                                    break;
+                            }
 
-						//remove that request from the queue
-						pendingRequestQueue.get(req.getLamportClock().serverId).remove();
-					}
+                            //remove that request from the queue
+                            pendingRequestQueue.get(req.getLamportClock().serverId).remove();
+                        }
 
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
 
-			}
+                }
+            }
 		}
 	}
 
@@ -219,7 +222,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		lookupPeer();
 	}
 
-	public void processTransferRequest(TransferRequest transferRequest) throws RemoteException, InterruptedException {
+	public synchronized void  processTransferRequest(TransferRequest transferRequest) throws RemoteException, InterruptedException {
 
 		if( transferRequest.getRequestOrigin().equals("Client")) { //Send Request to all the server
 			synchronized (timestamp) { //Increment timestamp)
@@ -256,7 +259,7 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		addToExecutionQueue(transferRequest);
 	}
 
-	public void processHaltRequest(HaltRequest haltRequest) throws RemoteException, InterruptedException {
+	public synchronized void processHaltRequest(HaltRequest haltRequest) throws RemoteException, InterruptedException {
 
 
 		if( haltRequest.getRequestOrigin().equals("Client")) { //Send Request to all the server
