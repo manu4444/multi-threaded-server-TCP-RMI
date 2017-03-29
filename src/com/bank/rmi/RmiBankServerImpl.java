@@ -57,7 +57,6 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
 		@Override
 		public void run() {
 
-            synchronized (lockObj) {
                 PriorityBlockingQueue<Request> tempReq = new PriorityBlockingQueue<Request>();
                 while (true) {
                     try {
@@ -141,7 +140,6 @@ public class RmiBankServerImpl extends UnicastRemoteObject implements RmiBankSer
                 }
             }
 		}
-	}
 
 
 	public RmiBankServerImpl(Request request, List<Response> responseList) throws RemoteException {
